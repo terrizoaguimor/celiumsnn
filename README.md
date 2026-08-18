@@ -44,8 +44,16 @@ Working repo for the model project described in `celiumneur-snn-handoff.md`
   chance). See `P4-REPORT.md`. Experiments now run on the DO droplet
   `celiumsnn-p4` (c-60-intel, 142.93.187.63, project at
   `/root/snnceliumsneur`) — the local workstation is too small.
-- **Next: P5** — task, baseline, curve (D6): quality-per-byte and
-  quality-per-op vs a dense fp16 equivalent under identical budget.
+- **P5 done** — `celiumsnn/model.py` (`Mycelium`, the D2 macro-architecture)
+  + `experiments/p5_shd.py` on SHD (T=32 count binning). **The
+  quality-per-byte curve crosses:** below ~150 KB the frozen block-sparse
+  ternary SNN beats the dense fp16 GRU at equal bytes (62.3% vs 53.7% at
+  ~70 KB); above ~300 KB the GRU leads (best: Mycelium 71.3% @ 441 KB vs
+  GRU 82.9% @ 1.45 MB). Quality-per-op does not cross. Float-weight
+  ablation LOST to ternary (quantization is free here). Chip-faithful
+  certificate: 34 neurons / 832 entries, 74.9% on 2-class SHD, IntLIF
+  replay bit-exact (0 mismatches), artifact SHA-256. See `P5-REPORT.md`.
+- All phases P0–P5 of the handoff are complete.
 
 ## Run
 

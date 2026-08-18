@@ -1,0 +1,159 @@
+{
+ "acc_best": 0.8286219081272085,
+ "history": [
+  {
+   "epoch": 2,
+   "test_acc": 0.7517667844522968,
+   "train_acc": 0.88623046875
+  },
+  {
+   "epoch": 4,
+   "test_acc": 0.799469964664311,
+   "train_acc": 0.95654296875
+  },
+  {
+   "epoch": 6,
+   "test_acc": 0.7848939929328622,
+   "train_acc": 0.982421875
+  },
+  {
+   "epoch": 8,
+   "test_acc": 0.7972614840989399,
+   "train_acc": 0.98974609375
+  },
+  {
+   "epoch": 10,
+   "test_acc": 0.8242049469964664,
+   "train_acc": 0.99755859375
+  },
+  {
+   "epoch": 12,
+   "test_acc": 0.8197879858657244,
+   "train_acc": 0.99755859375
+  },
+  {
+   "epoch": 14,
+   "test_acc": 0.7875441696113075,
+   "train_acc": 0.9951171875
+  },
+  {
+   "epoch": 16,
+   "test_acc": 0.818904593639576,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 18,
+   "test_acc": 0.8281802120141343,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 20,
+   "test_acc": 0.8277385159010601,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 22,
+   "test_acc": 0.8272968197879859,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 24,
+   "test_acc": 0.8268551236749117,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 26,
+   "test_acc": 0.8268551236749117,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 28,
+   "test_acc": 0.8259717314487632,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 30,
+   "test_acc": 0.8250883392226148,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 32,
+   "test_acc": 0.8259717314487632,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 34,
+   "test_acc": 0.825530035335689,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 36,
+   "test_acc": 0.8259717314487632,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 38,
+   "test_acc": 0.8281802120141343,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 40,
+   "test_acc": 0.8272968197879859,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 42,
+   "test_acc": 0.8264134275618374,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 44,
+   "test_acc": 0.8277385159010601,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 46,
+   "test_acc": 0.8277385159010601,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 48,
+   "test_acc": 0.8272968197879859,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 50,
+   "test_acc": 0.8277385159010601,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 52,
+   "test_acc": 0.8281802120141343,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 54,
+   "test_acc": 0.8281802120141343,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 56,
+   "test_acc": 0.8286219081272085,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 58,
+   "test_acc": 0.8286219081272085,
+   "train_acc": 1.0
+  },
+  {
+   "epoch": 60,
+   "test_acc": 0.8286219081272085,
+   "train_acc": 1.0
+  }
+ ],
+ "bytes": 1487912,
+ "macs_per_step": 742400,
+ "params": 743956,
+ "part": "gru-256-lr1e3"
+}
