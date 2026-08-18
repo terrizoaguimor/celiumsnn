@@ -164,7 +164,7 @@ The leak subtracts `ceil(|v|/2^k) ≥ 1` per tick, so:
 
 ## 7. Open items (none block P1)
 
-1. **RTL behavior for `theta ∈ [32768, 65535]`** — expressible in the soma word, unverifiable via golden. Chip-repo question; the model excludes the range (§1).
-2. **Refractory asymmetry (§2.4)** — replicated as-is; worth filing upstream as a "confirm intended" issue against `celiumneur`, since SPEC prose ("refractory duration in ticks") doesn't distinguish the two fire paths.
+1. **RTL behavior for `theta ∈ [32768, 65535]`** — ~~expressible in the soma word, unverifiable via golden~~ **Resolved upstream 2026-08-18** (celiumneur#3 → PR#5): SPEC §6.1 now declares the valid range 1..32767 and marks out-of-range CONFIG writes undefined behavior outside the verified envelope; a golden test pins the bounds.
+2. **Refractory asymmetry (§2.4)** — ~~worth filing upstream~~ **Resolved upstream 2026-08-18** (celiumneur#2 → PR#4): declared contract, not accident. SPEC §6.1 now specifies both fire paths (event-path fire blocks R ticks, tick-path fire blocks R−1) and a golden regression test pins it. This model's replication is now spec-compliant by definition.
 3. **Delivery-order canonicalization** — the golden order (core, delivery, row) is deterministic, but the RTL's intra-phase order comes from router arbitration. Bit-exactness *across all three* (PyTorch ≡ golden ≡ RTL) at intra-phase granularity is only meaningful under C1–C4, where order is irrelevant. The equivalence harness should compare **end-of-phase state**, which is what the RTL bench's multiset-equality contract already does.
-4. **SPEC section numbering** — handoff cites soma as SPEC §6.1 (correct for SPEC.md v0.0.2); golden docstrings cite §3 (stale). Cosmetic; golden numbering should not be trusted for SPEC cross-references.
+4. **SPEC section numbering** — ~~golden docstrings cite stale sections~~ **Resolved upstream 2026-08-18** (PR#5): golden docstrings now cite §6.1/§4 correctly.
