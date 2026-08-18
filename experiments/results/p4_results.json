@@ -1,0 +1,287 @@
+{
+ "lambdas": {
+  "0.02": {
+   "acc_gated": 1.0,
+   "acc_frozen_finetuned": 1.0,
+   "gates_layer1": [
+    [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     0.4094206988811493,
+     0.8665004968643188,
+     0.0,
+     0.5023206472396851
+    ]
+   ],
+   "gates_layer2": [
+    [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     0.9373656511306763,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.9541290998458862,
+     0.0,
+     0.0,
+     1.0
+    ]
+   ],
+   "mask_layer1": [
+    [
+     true,
+     true,
+     true,
+     true
+    ],
+    [
+     true,
+     true,
+     false,
+     true
+    ]
+   ],
+   "mask_layer2": [
+    [
+     true,
+     true,
+     true,
+     true
+    ],
+    [
+     false,
+     true,
+     true,
+     true
+    ],
+    [
+     true,
+     false,
+     false,
+     false
+    ],
+    [
+     true,
+     false,
+     false,
+     true
+    ]
+   ],
+   "flop_fraction": {
+    "layer1": 0.875,
+    "layer2": 0.625
+   },
+   "noise_block_fully_pruned": false,
+   "signal_block_open_count": 4,
+   "topology_sha256": "6a17f38215c1e168d3d8b69bb890ff6b1a787b918192e9f46417b75e53c7cf33"
+  },
+  "0.1": {
+   "acc_gated": 1.0,
+   "acc_frozen_finetuned": 1.0,
+   "gates_layer1": [
+    [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "gates_layer2": [
+    [
+     0.0,
+     1.0,
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "mask_layer1": [
+    [
+     true,
+     true,
+     true,
+     true
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ]
+   ],
+   "mask_layer2": [
+    [
+     false,
+     true,
+     true,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ]
+   ],
+   "flop_fraction": {
+    "layer1": 0.5,
+    "layer2": 0.125
+   },
+   "noise_block_fully_pruned": true,
+   "signal_block_open_count": 4,
+   "topology_sha256": "029f8db749fab0deca236e534e3e14c7d77ffeea416ef7c2250485ca626d7fb7"
+  },
+  "0.3": {
+   "acc_gated": 1.0,
+   "acc_frozen_finetuned": 1.0,
+   "gates_layer1": [
+    [
+     1.0,
+     1.0,
+     0.0,
+     1.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "gates_layer2": [
+    [
+     0.0,
+     0.0,
+     1.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "mask_layer1": [
+    [
+     true,
+     true,
+     false,
+     true
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ]
+   ],
+   "mask_layer2": [
+    [
+     false,
+     false,
+     true,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ],
+    [
+     false,
+     false,
+     false,
+     false
+    ]
+   ],
+   "flop_fraction": {
+    "layer1": 0.375,
+    "layer2": 0.0625
+   },
+   "noise_block_fully_pruned": true,
+   "signal_block_open_count": 3,
+   "topology_sha256": "31ff89c7ec5d48eda4312954df28c8cad95be5735ae2d453e3fbcfae3cf86651"
+  }
+ },
+ "baselines": {
+  "dense": 1.0,
+  "random_same_density": [
+   1.0,
+   0.225,
+   0.24375,
+   1.0
+  ]
+ },
+ "note": "run on DO c-60-intel droplet celiumsnn-p4, 2026-08-18; STEPS_A=800, STEPS_B=200, STEPS_BASE=1000, GATE_LR=0.1"
+}

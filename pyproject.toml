@@ -1,0 +1,9 @@
+[project]
+name = "celiumsnn"
+version = "0.1.0"
+description = "SNN model architecture derived from the CeliumNeUR constraint set (P1: integer LIF, golden-equivalent)"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = [".", "celiumneur/golden"]
+testpaths = ["tests"]
