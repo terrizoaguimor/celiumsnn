@@ -1,96 +1,103 @@
-# celiumsnn — SNN model architecture from the CeliumNeUR constraint set
+# Mycelium 🍄
 
-Working repo for the model project described in `celiumneur-snn-handoff.md`.
-The chip repo is linked as a **git submodule** at `celiumneur/` (pinned;
-clone with `git clone --recurse-submodules`, or run
-`git submodule update --init` after a plain clone). Its `golden/` Python
-model is the referee every primitive here is tested against.
+**A verification-first spiking neural network derived from the
+[CeliumNeUR](https://github.com/terrizoaguimor/celiumneur) chip's constraint set.**
 
-**License:** Apache-2.0 (both this repo and the chip repo).
-Paper draft: `WRITEUP.md` · LaTeX: `paper/mycelium.tex`.
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Paper](https://img.shields.io/badge/paper-mycelium.pdf-b31b1b.svg)](paper/mycelium.pdf)
+[![Chip DOI](https://img.shields.io/badge/chip%20DOI-10.5281%2Fzenodo.21925426-blue)](https://doi.org/10.5281/zenodo.21925426)
 
-## Status
+Most SNN papers propose neuron dynamics and assert hardware efficiency against
+silicon that does not exist. This project inverts the direction: it takes a
+neuromorphic SoC with **verified RTL** — golden model, mutation testing, bounded
+formal checks — and derives the trainable model *from the chip's constraint
+set*: ceiling leak, saturating int16 membranes, saturating int8 weights,
+per-neuron thresholds/leak/refractory, tick-synchronous phases, static routing.
 
-- **P0 done** — `P0-SEMANTICS.md`: extracted semantics, supersedes handoff §3.
-  Source of truth is `celiumneur/golden/` (55/55 pytest green).
-- **P1 done** — `celiumsnn/lif.py`: `IntLIF`, integer tick-synchronous LIF,
-  bit-exact against the golden model under the C1–C5 contract
-  (P0-SEMANTICS.md §4). 40 tests in `tests/`:
-  - `test_lif_unit.py` — golden `test_soma.py` ported to the tick contract;
-  - `test_equivalence_soma.py` — randomized differential vs golden `Soma`,
-    plus explicit C3/C4 contract-boundary divergence tests;
-  - `test_equivalence_net.py` — whole-network differential vs golden
-    `NeuroSandbox` (mesh + dendrite + somas), phase-by-phase state equality.
-  Extended sweeps run clean: 50 seeds × 500 phases × 32 neurons (soma) and
-  10 seeds × 80 phases × 1024-neuron sandbox (network).
-- **P2 done — GATE: PROCEED** (`P2-REPORT.md`): all pre-registered kill
-  criteria pass. The ChannelBitLinear NULL reproduced only as the sweep's
-  worst corner (fast leak + high θ + triangular surrogate) — a placement
-  pathology, not ternarization. Ternary is the best-conditioned precision.
-  Decisions: D3 = ternary primary, D5 = atan width 0.25·θ, k high.
-  New code: `celiumsnn/lif_diff.py` (DiffLIF, forward bit-identical to
-  IntLIF — tested), `celiumsnn/surrogate.py`, `celiumsnn/quant.py`,
-  `experiments/p2_diagnostic.py` (sweep + verdict, results under
-  `experiments/results/`).
-- **P3 done** — `celiumsnn/synapse.py`: `EdgeListSynapse` (chip-exact
-  dendrite table, certified against golden — the P1 network equivalence
-  test now routes delivery through it) and `BlockSparseSynapse` (static
-  block mask, dense ternary/int8 blocks, exact event semantics: an active
-  block = B² valid dendrite entries; equivalence to its edge-list expansion
-  tested). `DiffLIF` gained learnable per-neuron θ on the chip grid
-  (STE-rounded, IntLIF-equivalent forward). Functional check: block-sparse
-  ternary net (hidden 256, layer-2 mask at 69% of dense FLOPs, learnable θ)
-  reaches 100% on the rate task in 200 steps.
-- **P4 done** — `celiumsnn/gates.py`: hard-concrete L0 gates over the block
-  grid (`GatedBlockSparseSynapse`), `freeze()` → static mask + SHA-256
-  topology hash. On a planted-structure task (signal block + noise block),
-  λ=0.1 recovers the planted relevance exactly — noise routes all closed,
-  layer 2 at 12.5% of dense FLOPs, accuracy 1.0 before and after freeze.
-  Random masks at the same density are a coin flip (2/4 collapse to
-  chance). See `P4-REPORT.md`. Experiments now run on the DO droplet
-  `celiumsnn-p4` (c-60-intel, 142.93.187.63, project at
-  `/root/snnceliumsneur`) — the local workstation is too small.
-- **P5 done** — `celiumsnn/model.py` (`Mycelium`, the D2 macro-architecture)
-  + `experiments/p5_shd.py` on SHD (T=32 count binning). **The
-  quality-per-byte curve crosses:** below ~150 KB the frozen block-sparse
-  ternary SNN beats the dense fp16 GRU at equal bytes (62.3% vs 53.7% at
-  ~70 KB); above ~300 KB the GRU leads (best: Mycelium 71.3% @ 441 KB vs
-  GRU 82.9% @ 1.45 MB). Quality-per-op does not cross. Float-weight
-  ablation LOST to ternary (quantization is free here). Chip-faithful
-  certificate: 34 neurons / 832 entries, 74.9% on 2-class SHD, IntLIF
-  replay bit-exact (0 mismatches), artifact SHA-256. See `P5-REPORT.md`.
-- **P6 done** (`P6-REPORT.md`): the five P5 follow-ups executed. T=64 +
-  augmentation is an honest null (GRU +5 pts, Mycelium flat — the gap is
-  architectural); the λ sweep found the headline: at λ=0.15 the topology
-  learner **prunes recurrence to exactly zero** (feedforward wins SHD at
-  T=32), landing 66.0% @ 62 KB / 5.6 MMAC — +12.3 pts over the equal-byte
-  GRU; DVS-Gesture confirms generality (68.9%, chance 9.1%); multi-seed
-  shows Mycelium's ±6-pt seed spread vs GRU's ±1 (main open weakness);
-  `celiumsnn/snntorch_adapter.py` (CeliumLeaky) plugs DiffLIF into
-  snnTorch loops, tested against a real mixed snnTorch network.
-- All handoff phases (P0–P5) plus the P6 consolidation are complete.
-- **P7 done** (`P7-REPORT.md`): membrane readout (`readout_mode="membrane"`,
-  chip-honest via rb_* readback) wins on accuracy AND stability (0.673 ±
-  0.019 vs spike 0.648 ± 0.029); grad clipping hurts at every strength;
-  final fully multi-seed frontier: **62.3% ± 3.0 @ 31 KB / 1.5 MMAC** beats
-  GRU-16 (55.4% ± 4.0 @ 68 KB) with less than half the bytes, and the
-  per-op frontier crosses in that corner too. Paper draft: `WRITEUP.md`.
-  Locked recipe: membrane head, lr 1e-2 cosine, no clip, dropout 0.25,
-  θ₀=48, diverse leak, ternary, T=32.
+The result is a recurrent **block-sparse ternary** architecture whose forward
+pass is **bit-identical to the chip's golden model** under an explicit
+five-condition contract, whose learned topology is **frozen into a hashable
+artifact**, and whose deployment instance replays through the integer
+reference with **zero mismatches** after training on real data:
 
-## Run
-
-```bash
-.venv/bin/python -m pytest            # model suite (tests/)
-cd celiumneur/golden && ../../.venv/bin/python -m pytest   # golden referee
+```
+task-trained weights ≡ integer model ≡ golden referee ≡ verified RTL
 ```
 
-Requires the venv at `.venv/` (python ≥ 3.10, torch CPU, pytest).
+## Headline results (SHD, 3 seeds per point)
 
-## Contract in one line
+![The memory frontier on SHD](paper/fig_frontier.png)
 
-`IntLIF.step(I, has_event)` = one global tick of the chip: integrate the
-phase sum, evaluate pre-leak iff events arrived, leak (ceil, toward zero),
-evaluate post-leak on refractory exit, decrement the countdown last.
-Bit-exactness vs golden holds under C1–C5; violations are order-dependent
-by nature and are pinned by the two divergence tests, not hidden.
+| | |
+|---|---|
+| **Memory frontier** | Mycelium **62.3% ± 3.0 @ 31 KB** vs GRU-16 fp16 55.4% ± 4.0 @ 68 KB — the families cross near ~140 KB; dense wins above ~300 KB |
+| **Topology as a result** | L0 gating **deleted the recurrent synapse entirely** on SHD (−1.9 pts, 3× fewer ops) — the task didn't pay for recurrence and the learner found out |
+| **Quantization is free** | A float-weight ablation **lost** to ternary under identical dynamics |
+| **Deployment certificate** | 34 neurons / 832 synapse entries (inside the v1 silicon budget), 74.9% on 2-class SHD, **0 logit mismatches** in the IntLIF replay, SHA-256 artifact |
+| **Membrane readout** | +2.6 pts and half the seed variance vs a spike-count head, chip-honest via the RTL's non-invasive readback |
+
+Full story, tables and limitations: [`paper/mycelium.pdf`](paper/mycelium.pdf)
+(draft) · markdown twin: [`WRITEUP.md`](WRITEUP.md).
+
+## Quickstart
+
+```bash
+git clone --recurse-submodules https://github.com/terrizoaguimor/celiumsnn
+cd celiumsnn
+python3 -m venv .venv
+.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/pip install pytest h5py numpy matplotlib
+.venv/bin/python -m pytest        # 78 tests, incl. bit-exactness vs the chip's golden model
+```
+
+Train the headline model on Spiking Heidelberg Digits (downloads SHD on first run):
+
+```bash
+.venv/bin/python experiments/p5_shd.py --part myc-gated-512 \
+  --theta0 48 --dropout 0.25 --lr 1e-2 --epochs 60 --cosine \
+  --readout membrane --data-dir ./data/shd
+```
+
+## What's in the box
+
+| Path | What it is |
+|---|---|
+| `celiumsnn/lif.py` | `IntLIF` — integer tick-synchronous neuron, bit-exact vs golden |
+| `celiumsnn/lif_diff.py` | `DiffLIF` — differentiable twin (surrogate + STE), forward identical to `IntLIF` |
+| `celiumsnn/synapse.py` | `EdgeListSynapse` (chip-exact dendrite table) · `BlockSparseSynapse` (GPU form) |
+| `celiumsnn/gates.py` | Hard-concrete L0 topology learning → `freeze()` → SHA-256 artifact |
+| `celiumsnn/model.py` | `Mycelium` — the macro-architecture |
+| `celiumsnn/snntorch_adapter.py` | `CeliumLeaky` — drop the neuron into snnTorch loops |
+| `tests/` | 78 tests: golden equivalence (soma + full 1,024-neuron chip), contract boundaries, gradients |
+| `experiments/` | Every experiment + its JSON results (P2 gradient gate → P7 stability) |
+| `paper/` | LaTeX source, figure generator, compiled PDF |
+| `celiumneur/` | The chip, as a pinned submodule — RTL, SPEC, golden model, verification gates |
+| `P0…P7-REPORT.md`, `DECISIONS.md` | The lab notebook: every phase, every null result, kill criteria ratified up front |
+
+## The equivalence contract, in one paragraph
+
+The chip's golden model evaluates fire per synaptic event; a batched GPU model
+evaluates per tick. `P0-SEMANTICS.md` defines the five conditions (C1–C5)
+under which end-of-phase state equality is **exact**, and every boundary is
+pinned by an explicit divergence test rather than hidden. Under the contract,
+equality is verified on 10⁵+ fuzzed neuron-phases and full-chip simulations
+(mesh, dendrite tables with true duplicate multiplicity, somas) with delivery
+routed through the same sparse primitive used for training.
+
+## Citation
+
+```bibtex
+@misc{gutierrez2026mycelium,
+  author = {Guti{\'e}rrez, Mario},
+  title  = {Mycelium: A Verification-First Spiking Network from the CeliumNeUR Constraint Set},
+  year   = {2026},
+  note   = {Working draft. Code: github.com/terrizoaguimor/celiumsnn},
+}
+```
+
+Chip: Gutierrez, M. (2026). *CeliumNeUR — a verification-first neuromorphic
+SoC v1*. [doi:10.5281/zenodo.21925426](https://doi.org/10.5281/zenodo.21925426).
+
+## License
+
+Apache-2.0 (this repo and the chip's code; chip documentation CC BY 4.0).

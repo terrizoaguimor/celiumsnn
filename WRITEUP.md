@@ -189,4 +189,4 @@ we recommend leading with.
 **Selection protocol note:** all model selection (readout, lr, λ, dropout, θ₀, surrogate choices) used best-epoch accuracy on the SHD test split — the same split reported, no held-out validation set; the GRU baseline was selected under the identical protocol, so absolute numbers are optimistic for both families and comparisons are protocol-matched. Reported values are multi-seed means of selected configs, never best seeds.
 
 ---
-*Model repository: `terrizoaguimor/celiumsnn` (Apache-2.0, private — available on request). Chip: `github.com/terrizoaguimor/celiumneur` (Apache-2.0, public), DOI 10.5281/zenodo.21925426. All numbers reproducible from `experiments/` JSONs. Frontier figure: `paper/fig_frontier.pdf`.*
+*Model repository: [github.com/terrizoaguimor/celiumsnn](https://github.com/terrizoaguimor/celiumsnn) (Apache-2.0, public). Chip: `github.com/terrizoaguimor/celiumneur` (Apache-2.0, public), DOI 10.5281/zenodo.21925426. All numbers reproducible from `experiments/` JSONs. Frontier figure: `paper/fig_frontier.pdf`.*
