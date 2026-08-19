@@ -9,15 +9,16 @@ efficiency conditionally, against silicon that does not exist. We invert the
 direction: we take CeliumNeUR — a verification-first neuromorphic SoC with
 synthesizable RTL, a bit-exact golden model, mutation testing and bounded
 formal checks — and derive a trainable model *from its constraint set*: ceiling
-leak, int16 saturating membranes, int8/ternary saturating weights, per-neuron
+leak, int16 saturating membranes, saturating int8 weights, per-neuron
 thresholds/leak/refractory, tick-synchronous phase semantics, and static
 routing. The result, **Mycelium**, is a recurrent block-sparse ternary
-architecture whose forward pass is bit-identical to the chip's verified golden
+architecture — ternary being a measured choice within the chip's int8 grid,
+not an assumption — whose forward pass is bit-identical to the chip's verified golden
 model under an explicit five-condition contract, whose learned topology is
 frozen into a hashable, input-independent artifact, and whose deployment
 instance — 34 neurons, 832 synapse entries, inside the v1 silicon budget —
 replays through the integer reference with zero mismatches after training on
-real data. On Spiking Heidelberg Digits and DVS128 Gesture, Mycelium beats a
+real data. On Spiking Heidelberg Digits, Mycelium beats a
 budget-matched fp16 GRU on the memory frontier in the edge regime — **62.3% ±
 3.0 at 31 KB vs the GRU's 55.4% ± 4.0 at 68 KB** (3 seeds both) — where the
 per-operation frontier also tilts our way; dense wins above ~300 KB and in raw
@@ -183,4 +184,7 @@ knowledge, the first of its kind for a task-trained SNN, and it is the claim
 we recommend leading with.
 
 ---
-*Repository: `terrizoaguimor/celiumsnn` (private). Chip: `terrizoaguimor/celiumneur`, DOI 10.5281/zenodo.21925426. All numbers reproducible from `experiments/` JSONs.*
+**Selection protocol note:** all model selection (readout, lr, λ, dropout, θ₀, surrogate choices) used best-epoch accuracy on the SHD test split — the same split reported, no held-out validation set; the GRU baseline was selected under the identical protocol, so absolute numbers are optimistic for both families and comparisons are protocol-matched. Reported values are multi-seed means of selected configs, never best seeds.
+
+---
+*Model repository: `terrizoaguimor/celiumsnn` (Apache-2.0, private — available on request). Chip: `github.com/terrizoaguimor/celiumneur` (Apache-2.0, public), DOI 10.5281/zenodo.21925426. All numbers reproducible from `experiments/` JSONs. Frontier figure: `paper/fig_frontier.pdf`.*

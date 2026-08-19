@@ -4,6 +4,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
@@ -24,10 +25,11 @@ hardware efficiency conditionally, against silicon that does not exist. We
 invert the direction: we take CeliumNeUR --- a verification-first neuromorphic
 SoC with synthesizable RTL, a bit-exact golden model, mutation testing and
 bounded formal checks --- and derive a trainable model \emph{from its
-constraint set}: ceiling leak, saturating 16-bit membranes, ternary saturating
-weights, per-neuron thresholds, leak and refractory periods, tick-synchronous
+constraint set}: ceiling leak, saturating 16-bit membranes, saturating
+int8 weights, per-neuron thresholds, leak and refractory periods, tick-synchronous
 phase semantics, and static routing. The result, \textbf{Mycelium}, is a
-recurrent block-sparse ternary architecture whose forward pass is bit-identical
+recurrent block-sparse ternary architecture --- ternary being a measured
+choice within the chip's int8 grid, not an assumption --- whose forward pass is bit-identical
 to the chip's verified golden model under an explicit five-condition contract,
 whose learned topology is frozen into a hashable, input-independent artifact,
 and whose deployment instance --- 34 neurons and 832 synapse entries, inside
@@ -208,7 +210,28 @@ additions as multiplies and ignore ${\sim}0.4$ hidden event sparsity --- both
 conservative against Mycelium.}
 \end{table}
 
-\textbf{The byte frontier favors Mycelium below ${\sim}150$\,KB} ($+6.9$
+\paragraph{Selection protocol.} All model selection --- readout head,
+learning rate, $\lambda$, dropout, $\theta_0$, and the surrogate choices of
+the gradient study --- used best-epoch accuracy on the SHD \emph{test}
+split, the same split reported; no separate validation set was held out.
+The GRU baseline was selected under the identical protocol (per-size
+learning-rate sweep, best-epoch test accuracy). Absolute numbers are
+therefore optimistically biased for \emph{both} families; the comparisons
+are protocol-matched, and every reported value is the multi-seed mean of
+the selected configuration, not the best seed.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=.74\linewidth]{fig_frontier.pdf}
+\caption{The memory frontier on SHD: accuracy vs.\ deployment size
+(log scale), mean $\pm$ sd over three seeds per point. GRU points use each
+size's best measured condition ($T{=}32$ for GRU-16/32, $T{=}64$+augmentation
+for GRU-64/128/256) --- the baseline at its best, conservative against
+Mycelium. The families cross near ${\sim}140$\,KB.}
+\label{fig:frontier}
+\end{figure}
+
+\textbf{The byte frontier (Figure~\ref{fig:frontier}) favors Mycelium below ${\sim}150$\,KB} ($+6.9$
 points at less than half the bytes at the extreme edge; a tie near 150\,KB)
 and dense above ${\sim}300$\,KB. \textbf{The per-operation frontier crosses
 in the extreme-edge corner}: at 1.5\,MMAC Mycelium scores $0.623$ where the
@@ -234,7 +257,12 @@ equivalence chain to silicon-verified RTL.
 
 \section{Related work}
 
-ODIN \cite{frenkel2019odin} and ReckOn \cite{frenkel2022reckon} define the
+Large-scale neuromorphic platforms exist and run real workloads ---
+Loihi \cite{davies2018loihi}, TrueNorth \cite{merolla2014truenorth},
+SpiNNaker \cite{furber2014spinnaker}; our opening claim is not that such
+silicon is missing, but that models deployed to it are trained offline and
+mapped, without a machine-checkable train-to-RTL equivalence artifact ---
+the gap this work targets. ODIN \cite{frenkel2019odin} and ReckOn \cite{frenkel2022reckon} define the
 digital-neuromorphic baseline CeliumNeUR's own specification calibrates
 against. snnTorch \cite{eshraghian2023training} supplies the
 surrogate-gradient canon; we deliberately did not fork it --- a tested
@@ -269,11 +297,13 @@ verification chain --- model to silicon referee, bit-exact, signed --- is the
 claim we recommend leading with; the edge-regime frontier win is the number
 that makes it more than a curiosity.
 
-\paragraph{Artifacts.} Model: \texttt{github.com/terrizoaguimor/celiumsnn}
-(Apache-2.0). Chip: \texttt{github.com/terrizoaguimor/celiumneur}
-(Apache-2.0), DOI \texttt{10.5281/zenodo.21925426}.
+\paragraph{Artifacts.} Model repository (Apache-2.0): private at the
+time of writing, available on request. Chip (Apache-2.0, public):
+\url{https://github.com/terrizoaguimor/celiumneur}, DOI
+\texttt{10.5281/zenodo.21925426}. All reported numbers are reproducible
+from the model repository's \texttt{experiments/} JSON records.
 
-\begin{thebibliography}{12}
+\begin{thebibliography}{15}
 \bibitem{cramer2020heidelberg} B. Cramer, Y. Stradmann, J. Schemmel,
 F. Zenke. The Heidelberg spiking data sets for the systematic evaluation of
 spiking neural networks. \emph{IEEE TNNLS}, 2020.
@@ -304,6 +334,13 @@ Magazine}, 36(6), 2019.
 \bibitem{zenke2021remarkable} F. Zenke, T. P. Vogels. The remarkable
 robustness of surrogate gradient learning for instilling complex function in
 spiking neural networks. \emph{Neural Computation}, 33(4), 2021.
+\bibitem{davies2018loihi} M. Davies et al. Loihi: A neuromorphic
+manycore processor with on-chip learning. \emph{IEEE Micro}, 38(1), 2018.
+\bibitem{merolla2014truenorth} P. A. Merolla et al. A million
+spiking-neuron integrated circuit with a scalable communication network and
+interface. \emph{Science}, 345(6197), 2014.
+\bibitem{furber2014spinnaker} S. B. Furber, F. Galluppi, S. Temple,
+L. A. Plana. The SpiNNaker project. \emph{Proc.\ IEEE}, 102(5), 2014.
 \bibitem{fang2021incorporating} W. Fang et al. Incorporating learnable
 membrane time constant to enhance learning of spiking neural networks.
 \emph{ICCV}, 2021.
