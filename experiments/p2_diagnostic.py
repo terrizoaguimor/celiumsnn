@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """P2 — Gradient diagnostic (handoff §9 P2, risks R1/R2; decides D3/D5).
 
 Measures, over a sweep of surrogate shape x width x weight precision x

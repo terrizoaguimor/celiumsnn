@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """celiumsnn — SNN model architecture under the CeliumNeUR constraint set.
 
 P1 scope: integer LIF dynamics (celiumsnn.lif), bit-exact against

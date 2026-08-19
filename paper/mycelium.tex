@@ -1,0 +1,312 @@
+% SPDX-License-Identifier: Apache-2.0
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\newcommand{\sat}{\operatorname{sat}_{16}}
+\newcommand{\ceilleak}[1]{\left\lceil |#1| / 2^{k} \right\rceil}
+
+\title{\textbf{Mycelium: A Verification-First Spiking Network\\from the CeliumNeUR Constraint Set}}
+\author{Mario Guti\'errez\\Celiums Solutions LLC\\\texttt{mario@celiums.ai}}
+\date{August 2026 --- working draft v0.2}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Most spiking neural network (SNN) papers propose neuron dynamics and assert
+hardware efficiency conditionally, against silicon that does not exist. We
+invert the direction: we take CeliumNeUR --- a verification-first neuromorphic
+SoC with synthesizable RTL, a bit-exact golden model, mutation testing and
+bounded formal checks --- and derive a trainable model \emph{from its
+constraint set}: ceiling leak, saturating 16-bit membranes, ternary saturating
+weights, per-neuron thresholds, leak and refractory periods, tick-synchronous
+phase semantics, and static routing. The result, \textbf{Mycelium}, is a
+recurrent block-sparse ternary architecture whose forward pass is bit-identical
+to the chip's verified golden model under an explicit five-condition contract,
+whose learned topology is frozen into a hashable, input-independent artifact,
+and whose deployment instance --- 34 neurons and 832 synapse entries, inside
+the v1 silicon budget --- replays through the integer reference with zero
+mismatches after training on real data. On Spiking Heidelberg Digits, Mycelium
+beats a budget-matched fp16 GRU on the memory frontier in the edge regime
+($62.3\% \pm 3.0$ at 31\,KB versus $55.4\% \pm 4.0$ at 68\,KB, three seeds
+each), where the per-operation frontier also tilts in its favor; dense wins
+above ${\sim}300$\,KB and in raw operation count elsewhere --- exactly the
+split a memory-bandwidth thesis predicts. Along the way, $L_0$ topology
+learning \emph{deleted the recurrent synapse entirely} when the task did not
+pay for it; a float-weight ablation \emph{lost} to ternary under identical
+dynamics; and a membrane-potential readout, chip-honest through the RTL's
+non-invasive readback port, improved both accuracy ($+2.6$ points) and seed
+stability ($\pm 1.9$ vs.\ $\pm 2.9$) over a spike-count head.
+\end{abstract}
+
+\section{Introduction: constraints first, hardware later}
+
+BitNet's ternary weights were motivated by multiplication-free hardware that
+GPUs lack; BitNet wins anyway --- on memory bandwidth
+\cite{ma2024bitnet}. We claim the same structure holds for neuromorphic
+constraint sets. Split the chip's efficiency story in two:
+
+\begin{itemize}
+  \item a \textbf{static half} --- sparse frozen topology and integer weights
+    --- which is a \emph{memory} property and transfers to commodity
+    accelerators today;
+  \item a \textbf{dynamic half} --- event-driven ``no spike, no work''
+    execution --- which is a \emph{compute} property, worthless below a block
+    granularity of ${\sim}64$ on GPUs, and latent until silicon exists.
+\end{itemize}
+
+Designing against the full constraint set from the first training step
+matters: a model trained with relaxed float dynamics (exponential leak, long
+subthreshold memory) and quantized afterward depends on memory the silicon
+does not have, and fails on deployment.
+
+A second claim is unique to this project: \textbf{verifiability as a
+feature}. A frozen compute graph is an artifact --- hashable, signable,
+publishable. Because CeliumNeUR ships a golden model that its RTL is verified
+against cycle-by-cycle (mutation testing: 17/17 killed; bounded model
+checking to depth 60; lint-clean synthesis receipts), a network that is
+bit-exact against that golden model inherits a chain of custody no SNN paper
+we know of can offer:
+\[
+\text{task-trained weights} \;\equiv\; \text{integer model} \;\equiv\;
+\text{golden referee} \;\equiv\; \text{verified RTL.}
+\]
+
+\section{The constraint set}
+
+CeliumNeUR v1 is a 4-tile, 1{,}024-neuron, 1{,}024-synapse-entry SoC
+(2$\times$2 mesh, X-first dimension-order routing, credit-based flow
+control). The authority order for semantics is: golden model $>$
+specification prose. The neuron, extracted from the golden source:
+
+\paragraph{State.} Membrane $v \in [-32768, 32767]$ (signed 16-bit,
+\emph{saturating}, never wrapping); refractory countdown $c \geq 0$.
+Per-neuron parameters (all learnable in Mycelium, all stored per neuron on
+chip): threshold $\theta \in [1, 32767]$, leak shift $k \in [0,15]$,
+refractory duration $R$, reset mode.
+
+\paragraph{One global tick.} With phase input sum $I_t$ (spikes staged at
+tick $t{-}1$, integer counts $\times$ integer weights) and event-presence
+mask $E_t$:
+\begin{align}
+  v' &= \sat(v_{t-1} + I_t) \\
+  f^{\mathrm{evt}}_t &= E_t \wedge (c_{t-1} = 0) \wedge (v' \geq \theta) \\
+  v'' &= v' - f^{\mathrm{evt}}_t\,\theta, \qquad
+        c' = \begin{cases} R & f^{\mathrm{evt}}_t \\ c_{t-1} & \text{else} \end{cases} \\
+  v''' &= \sat\!\big(v'' - \operatorname{sign}(v'')\,\ceilleak{v''}\big) \\
+  f^{\mathrm{tick}}_t &= (c' = 0) \wedge (v''' \geq \theta) \\
+  v_t &= v''' - f^{\mathrm{tick}}_t\,\theta, \qquad
+        c_t = \max\!\big(c'[f^{\mathrm{tick}}_t \mapsto R] - 1,\; 0\big)
+\end{align}
+The ceiling leak loses at least one unit per tick: subthreshold memory is
+\emph{proportional to signal magnitude}, never exponential-tailed. The
+event gate $E_t$ is load-bearing (a zero-weight synapse still evaluates on
+chip; a quiet phase evaluates only post-leak), and the
+decrement-after-evaluation order makes the two fire paths deliberately
+asymmetric (an event-path fire blocks $R$ ticks; a tick-path fire blocks
+$R{-}1$) --- both discovered during extraction and since documented upstream
+as contract.
+
+\paragraph{The equivalence contract (C1--C5).} The golden model evaluates
+fire per synaptic event; a batched model evaluates per tick. Exact
+end-of-phase state equality holds under: \textbf{C1} subtractive reset,
+\textbf{C2} $R \geq 1$, \textbf{C3} no intermediate 16-bit saturation,
+\textbf{C4} no order-dependent threshold crossing, \textbf{C5} external
+injection subthreshold at injection time. Every boundary is pinned by an
+explicit divergence test. Under the contract we verified exact spike and
+state equality on over $10^5$ fuzzed neuron-phases and on full 1{,}024-neuron
+chip simulations (mesh, dendrite tables with true duplicate multiplicity,
+somas), with delivery routed through the same sparse primitive used for
+training.
+
+\section{Mycelium}
+
+\paragraph{Macro-architecture.} One or more recurrent modules over a
+\emph{static block graph}: feed and recurrent synapses are block-sparse
+ternary matrices (an active $B{\times}B$ block is all $B^2$ dendrite entries,
+making event semantics exact and the mask a faithful FLOP accountant),
+neurons are the integer dynamics above with a straight-through/surrogate
+training path, and a linear head reads the top layer's \emph{membrane
+potential in threshold units} $v/\theta$ at every tick, averaged. The
+membrane head is chip-honest: the RTL exposes soma state through a
+non-invasive readback port (invariant I5), so the head is a host-side layer;
+a spike-count head is the fully-on-chip alternative at $-2.6$ points and
+$1.5\times$ the seed variance. No attention, no data-dependent routing: the
+compute graph is input-independent and hashable.
+
+\paragraph{Training.} Surrogate gradients (arctan kernel, width
+$0.25\,\theta$) at both comparators; straight-through estimators through the
+ceiling leak, weight round\-ing, and the threshold grid; hard saturation
+passes no gradient beyond the rails. Weights are ternarized per block by
+absmean \cite{ma2024bitnet}; thresholds are float masters STE-rounded to the
+chip grid; leak is heterogeneous per neuron across the full 4-bit range
+\cite{perez2021neural}. Topology is learned with hard-concrete $L_0$ gates
+\cite{louizos2018learning} over the block grid at a hot learning rate, then
+\emph{binarized and frozen}; fine-tuning re-accommodates weights to the fixed
+graph, whose masks hash to a SHA-256 artifact. Adam with cosine decay; spike
+dropout; no gradient clipping (it hurt at every strength we tried).
+
+\section{Results}
+
+All numbers reproducible from the repository's \texttt{experiments/} JSONs.
+
+\subsection{Gradient viability (pre-registered gate)}
+
+A 324-configuration sweep (surrogate shape $\times$ width $\times$ weight
+precision $\times$ $T$ $\times$ leak $\times$ threshold placement) passed
+every pre-registered kill criterion. A previously observed null result
+(${\sim}2\times10^{-5}$ gate gradient in a ternary predecessor) reproduced
+\emph{only} in the sweep's worst corner --- fast leak, high threshold,
+compact-support (triangular) kernel --- identifying it as a
+threshold-placement pathology rather than a ternarization cost. Ternary was
+the \emph{best}-conditioned precision (median relative input-layer gradient
+$3.1\times10^{-2}$, vs.\ float $6.8\times10^{-3}$ and int8
+$2.4\times10^{-4}$); fat-tailed kernels are robust where triangular dies;
+slow leak dominates trainability; BPTT carries credit at $T{=}32$ without
+vanishing.
+
+\subsection{Topology learning}
+
+On a task with a planted-relevance structure (one signal input block, one
+pure-noise block), $L_0$ gating closed every noise route exactly at zero
+accuracy cost, and random masks at the learned density collapsed to chance
+half the time. On SHD, the learner made an unprompted structural decision:
+at $\lambda = 0.15$ it \textbf{deleted the recurrent synapse entirely}
+($-1.9$ points, $3\times$ fewer operations) --- rate-readout SHD at $T{=}32$
+does not pay for recurrence, and the method discovered that by itself.
+
+\subsection{Task curves}
+
+Spiking Heidelberg Digits \cite{cramer2020heidelberg} (20 classes, 700 spike
+channels, integer count binning at $T{=}32$), against fp16 GRUs trained under
+the same budget (60 epochs cosine, learning-rate swept). \textbf{Every row:
+three seeds.}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Model & Accuracy & Bytes & MMAC/sample \\
+\midrule
+\textbf{Mycelium $\lambda{=}0.15$} & $\mathbf{0.623 \pm 0.030}$ & \textbf{31\,KB} & \textbf{1.5} \\
+GRU-16 (fp16) & $0.554 \pm 0.040$ & 68\,KB & 1.1 \\
+GRU-32 (fp16) & $0.669 \pm 0.033$ & 140\,KB & 2.3 \\
+Mycelium $\lambda{=}0.02$ & $0.673 \pm 0.019$ & 167\,KB & 19.3 \\
+Mycelium $H{=}1024$ & $0.650 \pm 0.021$ & 284\,KB & 32.1 \\
+GRU-256 (fp16, $T{=}64$+aug) & $0.883 \pm 0.007$ & 1453\,KB & 47.5 \\
+\bottomrule
+\end{tabular}
+\caption{SHD frontier. Bytes: 2-bit ternary weights in active blocks + block
+masks + per-neuron soma parameters vs.\ fp16 dense. MACs count ternary
+additions as multiplies and ignore ${\sim}0.4$ hidden event sparsity --- both
+conservative against Mycelium.}
+\end{table}
+
+\textbf{The byte frontier favors Mycelium below ${\sim}150$\,KB} ($+6.9$
+points at less than half the bytes at the extreme edge; a tie near 150\,KB)
+and dense above ${\sim}300$\,KB. \textbf{The per-operation frontier crosses
+in the extreme-edge corner}: at 1.5\,MMAC Mycelium scores $0.623$ where the
+dense interpolation between its bracketing points passes ${\approx}0.59$;
+elsewhere dense wins per-op. Doubling temporal resolution and adding
+augmentation moved the GRU $+5$ points and Mycelium none: the remaining
+accuracy gap at scale is architectural, of which the membrane head recovered
+$+2.6$ points while halving seed variance. Multi-seeding also showed the
+small dense baselines to be equally noisy (GRU-16: $\pm 4.0$): at this scale,
+seed sensitivity is a property of the regime, not of spiking. DVS128 Gesture
+\cite{amir2017dvs} (11 classes, chance 9.1\%) replicates the pattern with the
+spike head: $0.689$ at 133\,KB vs.\ GRU $0.773$ at 484\,KB.
+
+\subsection{The deployment certificate}
+
+A two-class SHD instance inside the v1 silicon budget --- 34 neurons and 832
+dendrite entries, including the host-side encoder --- trains to $74.9\%$ and
+replays through the integer model (bit-exact to the golden referee, hence to
+RTL semantics) with \textbf{zero logit mismatches} over the full test set.
+The artifact is a SHA-256 over edges, int8 weights and integer thresholds.
+To our knowledge this is the first task-trained SNN with a machine-checkable
+equivalence chain to silicon-verified RTL.
+
+\section{Related work}
+
+ODIN \cite{frenkel2019odin} and ReckOn \cite{frenkel2022reckon} define the
+digital-neuromorphic baseline CeliumNeUR's own specification calibrates
+against. snnTorch \cite{eshraghian2023training} supplies the
+surrogate-gradient canon; we deliberately did not fork it --- a tested
+adapter exposes our neuron through its interface instead. Spikformer
+\cite{zhou2023spikformer} shows spiking attention exists, but attention is
+data-dependent routing --- precisely what a signable static graph excludes.
+BitNet b1.58 \cite{ma2024bitnet} is the structural precedent for the memory
+thesis; hard-concrete $L_0$ \cite{louizos2018learning} provides the gate
+machinery; neural heterogeneity \cite{perez2021neural} motivates per-neuron
+time constants, which the chip stores natively. Cramer et
+al.~\cite{cramer2020heidelberg} report recurrent-LIF baselines around
+$0.71$ at higher $T$, situating our $0.62$--$0.67$ at $T{=}32$ as in-family
+for spiking models, not state of the art. Surrogate-gradient learning
+follows \cite{neftci2019surrogate,zenke2021remarkable}; the arctan kernel is
+from \cite{fang2021incorporating}.
+
+\section{Limitations}
+
+Inference-side efficiency only (BPTT training costs more than dense); byte
+accounting at 2 bits/weight (1.58 information-theoretic would shift the
+Mycelium curve further left); one and a half tasks, with the membrane head
+unevaluated on DVS; three seeds per point (honest error bars, not
+significance theater --- the edge-point gap is ${\sim}2\sigma$); no GPU
+block-sparse kernel wall-clock measurements (FLOP fractions stand in); the
+chip-faithful instance is a deployability certificate, not a competitive
+model; scaling past 1{,}024 neurons on-silicon requires a flit redesign.
+
+\section{Conclusion}
+
+Constraint-first design paid where the thesis said it would: memory. The
+verification chain --- model to silicon referee, bit-exact, signed --- is the
+claim we recommend leading with; the edge-regime frontier win is the number
+that makes it more than a curiosity.
+
+\paragraph{Artifacts.} Model: \texttt{github.com/terrizoaguimor/celiumsnn}
+(Apache-2.0). Chip: \texttt{github.com/terrizoaguimor/celiumneur}
+(Apache-2.0), DOI \texttt{10.5281/zenodo.21925426}.
+
+\begin{thebibliography}{12}
+\bibitem{cramer2020heidelberg} B. Cramer, Y. Stradmann, J. Schemmel,
+F. Zenke. The Heidelberg spiking data sets for the systematic evaluation of
+spiking neural networks. \emph{IEEE TNNLS}, 2020.
+\bibitem{frenkel2019odin} C. Frenkel, M. Lefebvre, J.-D. Legat, D. Bol.
+A 0.086-mm$^2$ 12.7-pJ/SOP 64k-synapse 256-neuron online-learning digital
+spiking neuromorphic processor in 28-nm CMOS. \emph{IEEE TBioCAS}, 13(1), 2019.
+\bibitem{frenkel2022reckon} C. Frenkel, G. Indiveri. ReckOn: A 28nm
+sub-mm$^2$ task-agnostic spiking recurrent neural network processor enabling
+on-chip learning over second-long timescales. \emph{ISSCC}, 2022.
+\bibitem{eshraghian2023training} J. K. Eshraghian et al. Training spiking
+neural networks using lessons from deep learning. \emph{Proc.\ IEEE},
+111(9), 2023.
+\bibitem{zhou2023spikformer} Z. Zhou et al. Spikformer: When spiking neural
+network meets transformer. \emph{ICLR}, 2023.
+\bibitem{ma2024bitnet} S. Ma et al. The era of 1-bit LLMs: All large
+language models are in 1.58 bits. arXiv:2402.17764, 2024.
+\bibitem{louizos2018learning} C. Louizos, M. Welling, D. P. Kingma.
+Learning sparse neural networks through $L_0$ regularization. \emph{ICLR},
+2018.
+\bibitem{perez2021neural} N. Perez-Nieves, V. C. H. Leung, P. L. Dragotti,
+D. F. M. Goodman. Neural heterogeneity promotes robust learning.
+\emph{Nature Communications}, 12:5791, 2021.
+\bibitem{amir2017dvs} A. Amir et al. A low power, fully event-based gesture
+recognition system. \emph{CVPR}, 2017.
+\bibitem{neftci2019surrogate} E. O. Neftci, H. Mostafa, F. Zenke. Surrogate
+gradient learning in spiking neural networks. \emph{IEEE Signal Processing
+Magazine}, 36(6), 2019.
+\bibitem{zenke2021remarkable} F. Zenke, T. P. Vogels. The remarkable
+robustness of surrogate gradient learning for instilling complex function in
+spiking neural networks. \emph{Neural Computation}, 33(4), 2021.
+\bibitem{fang2021incorporating} W. Fang et al. Incorporating learnable
+membrane time constant to enhance learning of spiking neural networks.
+\emph{ICCV}, 2021.
+\end{thebibliography}
+
+\end{document}

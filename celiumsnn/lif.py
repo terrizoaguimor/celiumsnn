@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Integer LIF neuron with exact CeliumNeUR golden-model semantics (P1).
 
 Implements the reference forward pass of P0-SEMANTICS.md §4, which is

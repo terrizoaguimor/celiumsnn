@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Surrogate spike functions for the threshold comparator (P2, decides D5).
 
 Forward is the exact golden fire condition (v >= theta, i.e. Heaviside with

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """P4 — Topology learning and freeze (handoff §9 P4).
 
 Planted-structure task: 128 inputs in two 64-blocks. Block 0 carries the

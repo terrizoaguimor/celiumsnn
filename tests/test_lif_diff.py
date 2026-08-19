@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """DiffLIF (P2): forward bit-equivalence with IntLIF, and gradient sanity.
 
 The forward test chains the verification: golden ≡ IntLIF (P1 suite) and

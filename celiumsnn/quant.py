@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Straight-through estimators and weight quantizers (P2/P3, decides D3).
 
 Weight quantizers return INTEGER-VALUED float tensors (exact on the chip

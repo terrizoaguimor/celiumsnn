@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """P6 — DVS-Gesture as the second task (generality check).
 
 IBM DVS128 Gesture: 11 hand gestures, 128x128x2-polarity event camera.

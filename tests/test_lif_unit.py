@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Ported golden soma tests (celiumneur/golden/test_soma.py) adapted to the
 tick-synchronous IntLIF contract (P0-SEMANTICS.md §4).
 

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """snnTorch-style adapter for the CeliumNeUR neuron (P6).
 
 `CeliumLeaky` exposes DiffLIF through the calling convention snnTorch users

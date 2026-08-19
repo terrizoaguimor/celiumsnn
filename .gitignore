@@ -1,6 +1,6 @@
 .venv/
 __pycache__/
 .pytest_cache/
-celiumneur/
+
 *.pyc
 .claude/

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """DiffLIF — differentiable twin of IntLIF (P2).
 
 Forward pass is the SAME tick-synchronous contract as IntLIF

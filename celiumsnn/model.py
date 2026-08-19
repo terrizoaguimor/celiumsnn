@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Mycelium — the D2 macro-architecture (P5).
 
 A stack of recurrent modules over a STATIC block graph: each layer has a

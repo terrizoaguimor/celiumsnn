@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Differential equivalence: IntLIF vs the golden Soma, phase by phase.
 
 Golden is driven event-by-event (apply_synaptic_input per weight, then

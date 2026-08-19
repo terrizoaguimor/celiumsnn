@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """P6 adapter tests: CeliumLeaky behaves like an snnTorch neuron and is
 DiffLIF verbatim. The snnTorch integration test runs only when snntorch is
 installed (pytest.importorskip)."""

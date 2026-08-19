@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Topology learning over block-sparse connectivity (P4).
 
 Hard-Concrete L0 gates (Louizos, Welling & Kingma, ICLR 2018) over the

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """Sparse connectivity primitives (P3).
 
 Two modules with ONE semantic contract — the chip's dendrite table:

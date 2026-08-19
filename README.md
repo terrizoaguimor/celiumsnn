@@ -1,7 +1,13 @@
 # celiumsnn — SNN model architecture from the CeliumNeUR constraint set
 
-Working repo for the model project described in `celiumneur-snn-handoff.md`
-(chip repo vendored read-only under `celiumneur/`, AGPL-3.0-or-later).
+Working repo for the model project described in `celiumneur-snn-handoff.md`.
+The chip repo is linked as a **git submodule** at `celiumneur/` (pinned;
+clone with `git clone --recurse-submodules`, or run
+`git submodule update --init` after a plain clone). Its `golden/` Python
+model is the referee every primitive here is tested against.
+
+**License:** Apache-2.0 (both this repo and the chip repo).
+Paper draft: `WRITEUP.md` · LaTeX: `paper/mycelium.tex`.
 
 ## Status
 

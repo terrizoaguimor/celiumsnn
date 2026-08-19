@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 """P3 primitives: block-sparse <-> edge-list semantic equivalence, chip-grid
 quantization, learnable per-neuron theta, and an end-to-end functional check.
 
