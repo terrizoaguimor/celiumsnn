@@ -201,6 +201,8 @@ GRU-16 (fp16) & $0.554 \pm 0.040$ & 68\,KB & 1.1 \\
 GRU-32 (fp16) & $0.669 \pm 0.033$ & 140\,KB & 2.3 \\
 Mycelium $\lambda{=}0.02$ & $0.673 \pm 0.019$ & 167\,KB & 19.3 \\
 Mycelium $H{=}1024$ & $0.650 \pm 0.021$ & 284\,KB & 32.1 \\
+GRU-64 (fp16, $T{=}64$+aug) & $0.830 \pm 0.012$ & 291\,KB & 9.5 \\
+GRU-128 (fp16, $T{=}64$+aug) & $0.857 \pm 0.007$ & 631\,KB & 20.6 \\
 GRU-256 (fp16, $T{=}64$+aug) & $0.883 \pm 0.007$ & 1453\,KB & 47.5 \\
 \bottomrule
 \end{tabular}
@@ -299,8 +301,8 @@ that makes it more than a curiosity.
 
 \paragraph{Artifacts.} Model repository (Apache-2.0): private at the
 time of writing, available on request. Chip (Apache-2.0, public):
-\url{https://github.com/terrizoaguimor/celiumneur}, DOI
-\texttt{10.5281/zenodo.21925426}. All reported numbers are reproducible
+\url{https://github.com/terrizoaguimor/celiumneur},
+DOI \url{doi.org/10.5281/zenodo.21925426}. All reported numbers are reproducible
 from the model repository's \texttt{experiments/} JSON records.
 
 \begin{thebibliography}{15}

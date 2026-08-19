@@ -126,6 +126,8 @@ pay for recurrence, and the method found that out by itself.
 | GRU-32 fp16 | 0.669 ± 0.033 | 140 KB | 2.3 |
 | Mycelium λ=0.02 | 0.673 ± 0.019 | 167 KB | 19.3 |
 | Mycelium H=1024 | 0.650 ± 0.021 | 284 KB | 32.1 |
+| GRU-64 fp16 (T=64+aug) | 0.830 ± 0.012 | 291 KB | 9.5 |
+| GRU-128 fp16 (T=64+aug) | 0.857 ± 0.007 | 631 KB | 20.6 |
 | GRU-256 fp16 (T=64+aug) | 0.883 ± 0.007 | 1453 KB | 47.5 |
 
 **The byte frontier favors Mycelium below ~150 KB** (+6.9 points at less than
