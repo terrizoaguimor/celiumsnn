@@ -53,7 +53,16 @@ Working repo for the model project described in `celiumneur-snn-handoff.md`
   ablation LOST to ternary (quantization is free here). Chip-faithful
   certificate: 34 neurons / 832 entries, 74.9% on 2-class SHD, IntLIF
   replay bit-exact (0 mismatches), artifact SHA-256. See `P5-REPORT.md`.
-- All phases P0–P5 of the handoff are complete.
+- **P6 done** (`P6-REPORT.md`): the five P5 follow-ups executed. T=64 +
+  augmentation is an honest null (GRU +5 pts, Mycelium flat — the gap is
+  architectural); the λ sweep found the headline: at λ=0.15 the topology
+  learner **prunes recurrence to exactly zero** (feedforward wins SHD at
+  T=32), landing 66.0% @ 62 KB / 5.6 MMAC — +12.3 pts over the equal-byte
+  GRU; DVS-Gesture confirms generality (68.9%, chance 9.1%); multi-seed
+  shows Mycelium's ±6-pt seed spread vs GRU's ±1 (main open weakness);
+  `celiumsnn/snntorch_adapter.py` (CeliumLeaky) plugs DiffLIF into
+  snnTorch loops, tested against a real mixed snnTorch network.
+- All handoff phases (P0–P5) plus the P6 consolidation are complete.
 
 ## Run
 

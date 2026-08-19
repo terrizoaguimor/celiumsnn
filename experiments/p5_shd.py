@@ -98,8 +98,21 @@ def evaluate(model, x, y, batch=256) -> float:
     return correct / len(y)
 
 
+def augment_shd(x: torch.Tensor, gen: torch.Generator) -> torch.Tensor:
+    """Training-time augmentation: per-sample random roll in time (±T/8)
+    and along the tonotopic channel axis (±8 channels). Roll (wraparound)
+    is the common practice in SHD pipelines."""
+    batch, T, _ = x.shape
+    t_shift = torch.randint(-T // 8, T // 8 + 1, (batch,), generator=gen)
+    c_shift = torch.randint(-8, 9, (batch,), generator=gen)
+    out = torch.empty_like(x)
+    for b in range(batch):
+        out[b] = torch.roll(x[b], (int(t_shift[b]), int(c_shift[b])), dims=(0, 1))
+    return out
+
+
 def train(model, data, epochs, lam=0.0, log=None, eval_every=2, seed=0,
-          restore_best=False, cosine=False, lr=LR):
+          restore_best=False, cosine=False, lr=LR, augment_fn=None):
     (xtr, ytr), (xte, yte) = data["train"], data["test"]
     gate_params = [p for n, p in model.named_parameters() if "log_alpha" in n]
     other = [p for n, p in model.named_parameters() if "log_alpha" not in n]
@@ -118,7 +131,10 @@ def train(model, data, epochs, lam=0.0, log=None, eval_every=2, seed=0,
         perm = torch.randperm(len(ytr), generator=gen)
         for i in range(0, len(ytr), BATCH):
             idx = perm[i:i + BATCH]
-            loss = nn.functional.cross_entropy(model(xtr[idx].float()), ytr[idx])
+            xb = xtr[idx].float()
+            if augment_fn is not None:
+                xb = augment_fn(xb, gen)
+            loss = nn.functional.cross_entropy(model(xb), ytr[idx])
             if lam and hasattr(model, "l0_penalty"):
                 loss = loss + lam * model.l0_penalty()
             opt.zero_grad()
@@ -268,13 +284,18 @@ def main():
     ap.add_argument("--epochs", type=int, default=EPOCHS_FULL)
     ap.add_argument("--width", type=float, default=None)
     ap.add_argument("--lr", type=float, default=LR)
+    ap.add_argument("--lam", type=float, default=LAMBDA_L0)
     ap.add_argument("--cosine", action="store_true")
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--layers", type=int, default=1)
+    ap.add_argument("--T", type=int, default=T_BINS)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--augment", action="store_true")
     ap.add_argument("--tag", default="")
     args = ap.parse_args()
-    torch.manual_seed(0)
-    data = load_shd(args.data_dir)
+    torch.manual_seed(args.seed)
+    data = load_shd(args.data_dir, T=args.T)
+    aug = augment_shd if args.augment else None
     out = Path(__file__).parent / "results"
     out.mkdir(exist_ok=True)
     name = args.part + (f"-{args.tag}" if args.tag else "")
@@ -286,29 +307,32 @@ def main():
         payload = run_reference(data)
     elif args.part.startswith("gru-"):
         model = GRUBaseline(int(args.part[4:]))
-        best, history = train(model, data, args.epochs, log=log,
-                              cosine=args.cosine, lr=args.lr)
+        best, history = train(model, data, args.epochs, log=log, seed=args.seed,
+                              cosine=args.cosine, lr=args.lr, augment_fn=aug)
         payload = {"acc_best": best, "history": history,
                    "bytes": model.param_bytes(), "macs_per_step": model.macs_per_step(),
+                   "config": {"T": args.T, "seed": args.seed, "lr": args.lr,
+                              "augment": args.augment},
                    "params": sum(p.numel() for p in model.parameters())}
     elif args.part.startswith("myc-"):
         kind, h = args.part[4:].rsplit("-", 1)
         hidden = int(h)
         mkw = dict(theta0=args.theta0, precision=args.precision,
                    surrogate_width=args.width, dropout=args.dropout,
-                   n_layers=args.layers)
+                   n_layers=args.layers, seed=args.seed)
         if kind == "full":
             model = Mycelium(N_IN, hidden, N_CLASSES, **mkw)
-            best, history = train(model, data, args.epochs, log=log,
-                                  cosine=args.cosine, lr=args.lr)
+            best, history = train(model, data, args.epochs, log=log, seed=args.seed,
+                                  cosine=args.cosine, lr=args.lr, augment_fn=aug)
         else:  # gated -> freeze -> fine-tune (2/3 + 1/3 of the epoch budget)
             model = Mycelium(N_IN, hidden, N_CLASSES, gated=True, **mkw)
             ep_a = args.epochs * 2 // 3
-            _, hist_a = train(model, data, ep_a, lam=LAMBDA_L0, log=log,
-                              lr=args.lr)
+            _, hist_a = train(model, data, ep_a, lam=args.lam, log=log,
+                              seed=args.seed, lr=args.lr, augment_fn=aug)
             model = model.freeze()
             best, hist_b = train(model, data, args.epochs - ep_a, log=log,
-                                 cosine=args.cosine, lr=args.lr)
+                                 seed=args.seed, cosine=args.cosine, lr=args.lr,
+                                 augment_fn=aug)
             history = hist_a + [{"freeze": True}] + hist_b
         f_in, f_rec = model._fracs()
         payload = {"acc_best": best, "history": history,
@@ -316,7 +340,9 @@ def main():
                    "flop_fraction": {"in": f_in, "rec": f_rec},
                    "hidden_rate": getattr(model, "last_rate", None),
                    "config": {"theta0": args.theta0, "precision": args.precision,
-                              "epochs": args.epochs},
+                              "epochs": args.epochs, "T": args.T, "seed": args.seed,
+                              "augment": args.augment, "lam": args.lam,
+                              "lr": args.lr},
                    "topology_sha256": model.hash()}
     else:
         raise SystemExit(f"unknown part {args.part}")
