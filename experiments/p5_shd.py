@@ -112,7 +112,8 @@ def augment_shd(x: torch.Tensor, gen: torch.Generator) -> torch.Tensor:
 
 
 def train(model, data, epochs, lam=0.0, log=None, eval_every=2, seed=0,
-          restore_best=False, cosine=False, lr=LR, augment_fn=None):
+          restore_best=False, cosine=False, lr=LR, augment_fn=None,
+          clip: float = 0.0):
     (xtr, ytr), (xte, yte) = data["train"], data["test"]
     gate_params = [p for n, p in model.named_parameters() if "log_alpha" in n]
     other = [p for n, p in model.named_parameters() if "log_alpha" not in n]
@@ -139,6 +140,8 @@ def train(model, data, epochs, lam=0.0, log=None, eval_every=2, seed=0,
                 loss = loss + lam * model.l0_penalty()
             opt.zero_grad()
             loss.backward()
+            if clip:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             opt.step()
         if sched is not None:
             sched.step()
@@ -291,6 +294,8 @@ def main():
     ap.add_argument("--T", type=int, default=T_BINS)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--augment", action="store_true")
+    ap.add_argument("--readout", default="spike", choices=["spike", "membrane"])
+    ap.add_argument("--clip", type=float, default=0.0)
     ap.add_argument("--tag", default="")
     args = ap.parse_args()
     torch.manual_seed(args.seed)
@@ -319,20 +324,23 @@ def main():
         hidden = int(h)
         mkw = dict(theta0=args.theta0, precision=args.precision,
                    surrogate_width=args.width, dropout=args.dropout,
-                   n_layers=args.layers, seed=args.seed)
+                   n_layers=args.layers, seed=args.seed,
+                   readout_mode=args.readout)
         if kind == "full":
             model = Mycelium(N_IN, hidden, N_CLASSES, **mkw)
             best, history = train(model, data, args.epochs, log=log, seed=args.seed,
-                                  cosine=args.cosine, lr=args.lr, augment_fn=aug)
+                                  cosine=args.cosine, lr=args.lr, augment_fn=aug,
+                                  clip=args.clip)
         else:  # gated -> freeze -> fine-tune (2/3 + 1/3 of the epoch budget)
             model = Mycelium(N_IN, hidden, N_CLASSES, gated=True, **mkw)
             ep_a = args.epochs * 2 // 3
             _, hist_a = train(model, data, ep_a, lam=args.lam, log=log,
-                              seed=args.seed, lr=args.lr, augment_fn=aug)
+                              seed=args.seed, lr=args.lr, augment_fn=aug,
+                              clip=args.clip)
             model = model.freeze()
             best, hist_b = train(model, data, args.epochs - ep_a, log=log,
                                  seed=args.seed, cosine=args.cosine, lr=args.lr,
-                                 augment_fn=aug)
+                                 augment_fn=aug, clip=args.clip)
             history = hist_a + [{"freeze": True}] + hist_b
         f_in, f_rec = model._fracs()
         payload = {"acc_best": best, "history": history,
@@ -342,7 +350,8 @@ def main():
                    "config": {"theta0": args.theta0, "precision": args.precision,
                               "epochs": args.epochs, "T": args.T, "seed": args.seed,
                               "augment": args.augment, "lam": args.lam,
-                              "lr": args.lr},
+                              "lr": args.lr, "readout": args.readout,
+                              "clip": args.clip},
                    "topology_sha256": model.hash()}
     else:
         raise SystemExit(f"unknown part {args.part}")

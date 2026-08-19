@@ -63,6 +63,14 @@ Working repo for the model project described in `celiumneur-snn-handoff.md`
   `celiumsnn/snntorch_adapter.py` (CeliumLeaky) plugs DiffLIF into
   snnTorch loops, tested against a real mixed snnTorch network.
 - All handoff phases (P0–P5) plus the P6 consolidation are complete.
+- **P7 done** (`P7-REPORT.md`): membrane readout (`readout_mode="membrane"`,
+  chip-honest via rb_* readback) wins on accuracy AND stability (0.673 ±
+  0.019 vs spike 0.648 ± 0.029); grad clipping hurts at every strength;
+  final fully multi-seed frontier: **62.3% ± 3.0 @ 31 KB / 1.5 MMAC** beats
+  GRU-16 (55.4% ± 4.0 @ 68 KB) with less than half the bytes, and the
+  per-op frontier crosses in that corner too. Paper draft: `WRITEUP.md`.
+  Locked recipe: membrane head, lr 1e-2 cosine, no clip, dropout 0.25,
+  θ₀=48, diverse leak, ternary, T=32.
 
 ## Run
 

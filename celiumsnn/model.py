@@ -34,8 +34,11 @@ class Mycelium(nn.Module):
                  n_layers: int = 1, gated: bool = False, precision: str = "ternary",
                  theta0: float = 8.0, leak_shift="diverse",
                  surrogate_width: float | None = None, dropout: float = 0.0,
-                 seed: int = 0) -> None:
+                 readout_mode: str = "spike", seed: int = 0) -> None:
         super().__init__()
+        if readout_mode not in ("spike", "membrane"):
+            raise ValueError("readout_mode must be 'spike' or 'membrane'")
+        self.readout_mode = readout_mode
         self.hidden, self.n_layers = hidden, n_layers
         if surrogate_width is None:
             surrogate_width = 0.25 * theta0  # P2's D5 default
@@ -75,7 +78,17 @@ class Mycelium(nn.Module):
                 rate = rate + float(s.detach().mean())
                 states[layer] = self.dropout(s)
                 feed = states[layer]
-            logits = logits + self.readout(feed)
+            if self.readout_mode == "membrane":
+                # Continuous head: top-layer membrane in threshold units.
+                # Gradient reaches every tick through the membrane recursion
+                # itself — no surrogate on the readout path. Deployment reads
+                # v via the chip's non-invasive rb_* sideband (invariant I5),
+                # so the head stays chip-honest as a host-side layer.
+                top = self.lifs[-1]
+                feat = top.v / top.effective_theta()
+                logits = logits + self.readout(feat)
+            else:
+                logits = logits + self.readout(feed)
         self.last_rate = rate / (T * self.n_layers)
         return logits / T
 
@@ -90,6 +103,7 @@ class Mycelium(nn.Module):
         frozen = Mycelium.__new__(Mycelium)
         nn.Module.__init__(frozen)
         frozen.hidden, frozen.n_layers = self.hidden, self.n_layers
+        frozen.readout_mode = self.readout_mode
         frozen.syn_feed = nn.ModuleList(s.freeze() for s in self.syn_feed)
         frozen.syn_rec = nn.ModuleList(s.freeze() for s in self.syn_rec)
         frozen.lifs = nn.ModuleList()
